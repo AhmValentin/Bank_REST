@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - include:
+      file: db/migration/create_table_card.yml
+  - include:
+      file: db/migration/create_table_users.yml
+  - include:
+      file: db/migration/20251021_change_cards_data.yml
+  - include:
+      file: db/migration/20251022_change_users_data.yml

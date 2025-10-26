@@ -1,9 +1,37 @@
-# 
-# docker-compose.yml — определяет сервисы для разработки и тестирования.
+services:
+  postgresql:
+    image: postgres:15
+    container_name: card_db_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: cards_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+        - cards-network
+  app:
+    build: .
+    container_name: cards-app
+    volumes:
+      - ./target/cards-app.jar:/app/app.jar
+    ports:
+      - "8091:8091"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cards_db
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_LIQUIBASE_ENABLED: "true"
+    depends_on:
+      - postgresql
+    networks:
+      - cards-network
 
-Что нужно сделать:
-  - Настроить сервисы для:
-      - PostgreSQL (или MySQL) с начальной базой.
-      - Приложения Spring Boot (если нужно).
-  - Открыть нужные порты (например, 5432, 8080).
-  - Настроить volume для хранения данных БД.
+volumes:
+  postgres_data:
+
+networks:
+  cards-network:
+    driver: bridge

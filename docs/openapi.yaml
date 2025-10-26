@@ -1,1 +1,827 @@
-# Здесь будет OpenAPI описание всех доступных эндпоинтов и моделей данных.
+openapi: 3.0.3
+info:
+  title: Bank Cards Management API
+  description: API для управления банковскими картами, пользователями и аутентификации
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:8091
+    description: Development server
+  - url: https://api.example.com
+    description: Production server
+
+paths:
+  /cards/admin:
+    get:
+      tags:
+        - Card Management
+      summary: Получить все карты (админ)
+      description: Возвращает список всех карт в системе. Только для администраторов.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Успешное получение списка карт
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResponseDto'
+        '401':
+          description: Пользователь не авторизован
+        '403':
+          description: Доступ запрещен
+
+  /cards/user:
+    get:
+      tags:
+        - Card Management
+      summary: Получить карты пользователя
+      description: Возвращает пагинированный список карт текущего пользователя
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Номер страницы (начиная с 0)
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: size
+          in: query
+          description: Размер страницы
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Успешное получение списка карт
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResponseDto'
+        '401':
+          description: Пользователь не авторизован
+
+  /cards:
+    post:
+      tags:
+        - Card Management
+      summary: Создать новую карту
+      description: Создает новую банковскую карту
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCardRequest'
+      responses:
+        '200':
+          description: Карта успешно создана
+        '400':
+          description: Неверные данные запроса
+
+  /cards/{cardId}/status:
+    patch:
+      tags:
+        - Card Management
+      summary: Обновить статус карты
+      description: Обновляет статус карты по её идентификатору
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          description: ID карты
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: true
+          description: Новый статус карты
+          schema:
+            $ref: '#/components/schemas/Status'
+      responses:
+        '200':
+          description: Статус карты успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDto'
+        '404':
+          description: Карта не найдена
+
+  /cards/{id}:
+    delete:
+      tags:
+        - Card Management
+      summary: Удалить карту
+      description: Удаляет карту по её идентификатору
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID карты
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Карта успешно удалена
+        '404':
+          description: Карта не найдена
+
+  /cards/{cardId}/block-request:
+    post:
+      tags:
+        - Card Management
+      summary: Запрос на блокировку карты
+      description: Создает запрос на блокировку карты
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cardId
+          in: path
+          required: true
+          description: ID карты
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlockCardRequest'
+      responses:
+        '200':
+          description: Запрос на блокировку успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlockCardResponse'
+        '400':
+          description: Ошибка при создании запроса на блокировку
+        '404':
+          description: Карта не найдена
+
+  /cards/balance:
+    get:
+      tags:
+        - Card Management
+      summary: Получить общий баланс
+      description: Рассчитывает общий баланс всех карт пользователя
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Номер страницы (начиная с 0)
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: size
+          in: query
+          description: Размер страницы
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Баланс успешно рассчитан
+          content:
+            application/json:
+              schema:
+                type: number
+                format: decimal
+                example: 1500.75
+        '400':
+          description: Ошибка при расчете баланса
+        '401':
+          description: Пользователь не авторизован
+
+  /cards/transfer:
+    post:
+      tags:
+        - Card Management
+      summary: Перевод средств
+      description: Выполняет перевод средств между картами
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferRequest'
+      responses:
+        '200':
+          description: Перевод успешно выполнен
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Перевод выполнен успешно"
+        '400':
+          description: Ошибка при выполнении перевода
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Недостаточно средств на карте"
+  /users:
+    post:
+      tags:
+        - User Management
+      summary: Создать пользователя
+      description: Создает нового пользователя в системе
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Пользователь успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '400':
+          description: Неверные данные запроса
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Пользователь с таким email уже существует"
+
+    get:
+      tags:
+        - User Management
+      summary: Получить всех пользователей
+      description: Возвращает список всех пользователей системы
+      responses:
+        '200':
+          description: Список пользователей успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserDto'
+
+  /users/{id}:
+    get:
+      tags:
+        - User Management
+      summary: Получить пользователя по ID
+      description: Возвращает информацию о пользователе по его идентификатору
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID пользователя
+          schema:
+            type: string
+            format: uuid
+            example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '200':
+          description: Пользователь найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '404':
+          description: Пользователь не найден
+
+    put:
+      tags:
+        - User Management
+      summary: Обновить пользователя
+      description: Обновляет информацию о пользователе по его идентификатору
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID пользователя
+          schema:
+            type: string
+            format: uuid
+            example: "123e4567-e89b-12d3-a456-426614174000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Пользователь успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '400':
+          description: Неверные данные запроса
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Email уже используется другим пользователем"
+        '404':
+          description: Пользователь не найден
+
+    delete:
+      tags:
+        - User Management
+      summary: Удалить пользователя
+      description: Удаляет пользователя по его идентификатору
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID пользователя
+          schema:
+            type: string
+            format: uuid
+            example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '200':
+          description: Пользователь успешно удален
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Пользователь удален"
+        '400':
+          description: Ошибка при удалении пользователя
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Невозможно удалить пользователя с привязанными картами"
+        '404':
+          description: Пользователь не найден
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Вход в систему
+      description: Аутентификация пользователя и получение JWT токенов
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              validLogin:
+                summary: Valid login credentials
+                value:
+                  email: "user@example.com"
+                  password: "password123"
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              examples:
+                successResponse:
+                  summary: Successful authentication
+                  value:
+                    accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    tokenType: "Bearer"
+                    expiresIn: 3600
+        '400':
+          description: Неверные данные запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Неверные учетные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Обновление токена
+      description: Обновление JWT токена с использованием refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              refreshRequest:
+                summary: Refresh token request
+                value:
+                  email: "user@example.com"
+                  password: "password123"
+      responses:
+        '200':
+          description: Токен успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              examples:
+                refreshSuccess:
+                  summary: Token refreshed successfully
+                  value:
+                    accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    tokenType: "Bearer"
+                    expiresIn: 3600
+        '400':
+          description: Неверные данные запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Недействительный refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ResponseDto:
+      type: object
+      required:
+        - id
+        - maskedCardNumber
+        - cardHolder
+        - expirationDate
+        - balance
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор карты
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        maskedCardNumber:
+          type: string
+          description: Маскированный номер карты
+          example: "411111******1111"
+          pattern: "^[0-9]{6}[*]{6}[0-9]{4}$"
+        cardHolder:
+          type: string
+          description: Имя держателя карты
+          example: "IVAN IVANOV"
+          maxLength: 50
+        expirationDate:
+          type: string
+          format: date
+          description: Дата истечения срока действия
+          example: "2025-12-31"
+        balance:
+          type: number
+          format: decimal
+          description: Текущий баланс карты
+          example: 1500.75
+          minimum: 0
+        status:
+          $ref: '#/components/schemas/Status'
+
+    PageResponseDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResponseDto'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+        size:
+          type: integer
+        number:
+          type: integer
+
+    CreateCardRequest:
+      type: object
+      required:
+        - cardNumber
+        - expirationDate
+        - balance
+        - userId
+      properties:
+        cardNumber:
+          type: string
+          description: Номер карты
+          example: "1234567812345678"
+        expirationDate:
+          type: string
+          format: date
+          description: Дата истечения срока действия карты
+          example: "2025-12-31"
+        balance:
+          type: number
+          format: decimal
+          description: Начальный баланс карты
+          example: 1000.50
+        userId:
+          type: string
+          format: uuid
+          description: ID пользователя-владельца карты
+
+    BlockCardRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          description: Причина блокировки карты
+          minLength: 1
+          maxLength: 255
+          example: "Утеря карты"
+        comment:
+          type: string
+          description: Дополнительный комментарий к блокировке
+          maxLength: 500
+          example: "Карта была утеряна в общественном транспорте"
+
+    BlockCardResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, error]
+        message:
+          type: string
+        requestId:
+          type: string
+          format: uuid
+        cardId:
+          type: string
+          format: uuid
+        requestedAt:
+          type: string
+          format: date-time
+
+    TransferRequest:
+      type: object
+      required:
+        - fromCardId
+        - toCardId
+        - amount
+      properties:
+        fromCardId:
+          type: string
+          format: uuid
+          description: UUID карты-отправителя
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        toCardId:
+          type: string
+          format: uuid
+          description: UUID карты-получателя
+          example: "123e4567-e89b-12d3-a456-426614174001"
+        amount:
+          type: number
+          format: decimal
+          description: Сумма перевода
+          example: 100.50
+
+    UserDto:
+      type: object
+      required:
+        - id
+        - email
+        - phoneNumber
+        - firstName
+        - lastName
+        - role
+        - birthDate
+        - fullName
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор пользователя
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        email:
+          type: string
+          format: email
+          description: Email пользователя
+          example: "user@example.com"
+        phoneNumber:
+          type: string
+          description: Номер телефона
+          example: "+79991234567"
+        firstName:
+          type: string
+          description: Имя пользователя
+          example: "Иван"
+          maxLength: 50
+        lastName:
+          type: string
+          description: Фамилия пользователя
+          example: "Иванов"
+          maxLength: 50
+        role:
+          $ref: '#/components/schemas/Role'
+        birthDate:
+          type: string
+          format: date
+          description: Дата рождения
+          example: "1990-01-15"
+        fullName:
+          type: string
+          description: Полное имя пользователя
+          example: "Иван Иванов"
+
+    CreateUserRequest:
+      type: object
+      required:
+        - email
+        - phoneNumber
+        - password
+        - firstName
+        - lastName
+        - role
+        - birthDate
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email пользователя
+          example: "user@example.com"
+          maxLength: 100
+        phoneNumber:
+          type: string
+          description: Номер телефона в международном формате
+          example: "+79991234567"
+        password:
+          type: string
+          format: password
+          description: Пароль пользователя
+          example: "Secure123"
+        firstName:
+          type: string
+          description: Имя пользователя
+          example: "Иван"
+          maxLength: 50
+        lastName:
+          type: string
+          description: Фамилия пользователя
+          example: "Иванов"
+          maxLength: 50
+        role:
+          $ref: '#/components/schemas/Role'
+        birthDate:
+          type: string
+          format: date
+          description: Дата рождения
+          example: "1990-01-15"
+
+    UpdateUserRequest:
+      type: object
+      description: Запрос на обновление данных пользователя. Все поля опциональны.
+      properties:
+        phoneNumber:
+          type: string
+          description: Новый номер телефона в международном формате
+          example: "+79991234567"
+          nullable: true
+        firstName:
+          type: string
+          description: Новое имя пользователя
+          example: "Иван"
+          maxLength: 50
+          nullable: true
+        lastName:
+          type: string
+          description: Новая фамилия пользователя
+          example: "Иванов"
+          maxLength: 50
+          nullable: true
+        birthDate:
+          type: string
+          format: date
+          description: Новая дата рождения пользователя
+          example: "1990-01-15"
+          nullable: true
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email пользователя
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          description: Пароль пользователя
+          example: "User123"
+
+    AuthResponse:
+      type: object
+      required:
+        - token
+        - refreshToken
+        - email
+        - role
+        - fullName
+      properties:
+        token:
+          type: string
+          description: JWT access token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        refreshToken:
+          type: string
+          description: JWT refresh token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        email:
+          type: string
+          format: email
+          description: Email пользователя
+          example: "user@example.com"
+        role:
+          $ref: '#/components/schemas/Role'
+        fullName:
+          type: string
+          description: Полное имя пользователя
+          example: "Иван Иванов"
+
+    ErrorResponse:
+      type: object
+      required:
+        - uri
+        - errorStatus
+        - errorMessage
+        - timestamp
+      properties:
+        uri:
+          type: string
+          description: URI пути, по которому произошла ошибка
+          example: "/api/cards/123e4567-e89b-12d3-a456-426614174000"
+        errorStatus:
+          type: string
+          description: HTTP статус код и его текстовое представление
+          example: "500 INTERNAL SERVER ERROR"
+        errorMessage:
+          type: string
+          description: Пользовательское сообщение об ошибке
+          example: "Сервис временно недоступен. Повторите попытку позже"
+        errorDetails:
+          type: string
+          description: Детальное техническое описание ошибки
+          example: "Request timed out while waiting for a response from the upstream service."
+        timestamp:
+          type: string
+          format: date-time
+          description: Временная метка возникновения ошибки
+          example: "2024-09-03T09:50:05Z"
+
+    Status:
+      type: string
+      enum: [ACTIVE, BLOCKED, EXPIRED]
+      description: Статус банковской карты
+
+    Role:
+      type: string
+      enum: [ADMIN, USER]
+      description: Статус банковской карты
