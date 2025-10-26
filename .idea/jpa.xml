@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PersistenceUnitSettings">
+    <persistence-units>
+      <persistence-unit moduleName="cards-service" name="cards-service" framework="JPA" ormUnit="cards-service:cards-service" defaultDataSourceId="2a6c1022-6b53-438e-9853-004e230732be" />
+    </persistence-units>
+  </component>
+</project>

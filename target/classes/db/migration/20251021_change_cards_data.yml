@@ -1,0 +1,100 @@
+databaseChangeLog:
+  - changeSet:
+      id: add_status_to_cards
+      author: Ahmatov Valentin
+      comment: Добавление поля status в таблицу cards
+      changes:
+        - addColumn:
+            tableName: cards
+            columns:
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: "ACTIVE"
+                  remarks: статус карты
+
+        - addNotNullConstraint:
+            tableName: cards
+            columnName: status
+
+        # Исправленный check constraint
+        - sql:
+            sql: "ALTER TABLE cards ADD CONSTRAINT chk_cards_status CHECK (status IN ('ACTIVE', 'BLOCKED', 'EXPIRED'))"
+
+  - changeSet:
+      id: add_user_id_to_cards
+      author: Ahmatov Valentin
+      comment: Добавление user_id в cards и удаление card_holder
+      changes:
+        - addColumn:
+            tableName: cards
+            columns:
+              - column:
+                  name: user_id
+                  type: UUID
+                  remarks: Ссылка на владельца карты
+
+        - addForeignKeyConstraint:
+            baseTableName: cards
+            baseColumnNames: user_id
+            constraintName: fk_cards_user_id
+            referencedTableName: users
+            referencedColumnNames: id
+
+        - dropColumn:
+            tableName: cards
+            columnName: card_holder
+
+  - changeSet:
+      id: block_john_smith_card
+      author: Ahmatov Valentin
+      comment: Блокировка одной карты John Smith
+      changes:
+        - update:
+            tableName: cards
+            columns:
+              - column:
+                  name: status
+                  value: "BLOCKED"
+            where: "card_number = '5536876543215678'"
+
+  - changeSet:
+      id: update_cards_with_user_ids
+      author: Ahmatov Valentin
+      comment: Связывание карт с пользователями
+      changes:
+        - update:
+            tableName: cards
+            columns:
+              - column:
+                  name: user_id
+                  valueComputed: "(SELECT id FROM users WHERE email = 'john.smith@example.com')"
+            where: "card_number IN ('4263547890121234', '5536876543215678')"
+
+        - update:
+            tableName: cards
+            columns:
+              - column:
+                  name: user_id
+                  valueComputed: "(SELECT id FROM users WHERE email = 'maria.ivanova@example.com')"
+            where: "card_number = '5168234567899012'"
+
+        - update:
+            tableName: cards
+            columns:
+              - column:
+                  name: user_id
+                  valueComputed: "(SELECT id FROM users WHERE email = 'alexander.petrov@example.com')"
+            where: "card_number = '4111987654323456'"
+
+        - update:
+            tableName: cards
+            columns:
+              - column:
+                  name: user_id
+                  valueComputed: "(SELECT id FROM users WHERE email = 'ekaterina.sidorova@example.com')"
+            where: "card_number = '3714567812347890'"
+
+        - addNotNullConstraint:
+            tableName: cards
+            columnName: user_id
